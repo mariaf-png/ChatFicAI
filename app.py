@@ -103,5 +103,38 @@ if st.session_state.page == "home":
     
     fandom = st.text_input("Qual o Universo/Fandom?", placeholder="Ex: Marvel, Harry Potter")
     titulo = st.text_input("Título da História", placeholder="Ex: O Retorno do Herói")
-    instrucao = st.text_area("Como você quer
+    instrucao = st.text_area("Como você quer a sua história?", placeholder="Ex: Comece com um mistério em uma noite chuvosa...")
     
+    if st.button("GERAR HISTÓRIA ✨"):
+        if fandom and titulo and instrucao:
+            st.session_state.fandom = fandom
+            st.session_state.titulo = titulo
+            st.session_state.instrucao = instrucao
+            st.session_state.page = "chat"
+            st.rerun()
+
+# 5. PÁGINA DE CHAT
+else:
+    st.markdown(f"<h2 style='text-align:center; color:#7d33ff;'>{st.session_state.titulo}</h2>", unsafe_allow_html=True)
+    
+    for m in st.session_state.messages:
+        with st.chat_message(m["role"]):
+            st.write(m["content"])
+
+    if not st.session_state.messages:
+        with st.chat_message("assistant"):
+            try:
+                client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+                res = client.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
+                    messages=[{"role": "user", "content": f"Inicie o Capítulo 1 da fanfic {st.session_state.titulo} (Universo {st.session_state.fandom}). Instruções: {st.session_state.instrucao}"}]
+                )
+                txt = res.choices[0].message.content
+                st.write(txt)
+                st.session_state.messages.append({"role": "assistant", "content": txt})
+            except:
+                st.error("Erro na API! Verifique os Secrets.")
+
+    if prompt := st.chat_input("Diga o que acontece agora..."):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        st.rerun()
