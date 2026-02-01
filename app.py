@@ -1,113 +1,170 @@
 import streamlit as st
+import streamlit as st
 from groq import Groq
 import time
-from io import BytesIO
-from reportlab.pdfgen import canvas
 
-# 1. CONFIGURAÇÃO INICIAL E ESTILO (UI/UX DEEPSEEK STYLE)
-st.set_page_config(page_title="ChatFic AI", page_icon="📖", layout="wide")
+# 1. CONFIGURAÇÃO DE LAYOUT FORÇADA
+st.set_page_config(
+    page_title="ChatFic AI", 
+    page_icon="📖", 
+    layout="wide", 
+    initial_sidebar_state="expanded" # Isso força a barra lateral a abrir
+)
 
-# CSS Avançado para Animações, Temas e Layout
+# 2. CSS PARA CLONAR O DEEPSEEK (ROXO NEON E DARK MODE)
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+    /* Forçar fundo e cores do DeepSeek */
+    .stApp {
+        background: #0e0616 !important;
+        color: #e0e0e0 !important;
+    }
     
-    html, body, [data-testid="stAppViewContainer"] {
-        font-family: 'Inter', sans-serif;
-        background-color: #0e0616;
-        color: #e0e0e0;
+    /* Forçar visibilidade da Sidebar */
+    [data-testid="stSidebar"] {
+        background-color: #160a25 !important;
+        border-right: 2px solid #7d33ff !important;
+        min-width: 260px !important;
     }
 
-    /* Animação do Livro no Início */
-    @keyframes pulse {
-        0% { transform: scale(1); filter: drop-shadow(0 0 5px #7d33ff); }
-        50% { transform: scale(1.1); filter: drop-shadow(0 0 20px #7d33ff); }
-        100% { transform: scale(1); filter: drop-shadow(0 0 5px #7d33ff); }
+    /* Animação do Livro */
+    @keyframes pulse-book {
+        0% { transform: rotate(0deg) scale(1); }
+        50% { transform: rotate(5deg) scale(1.1); }
+        100% { transform: rotate(0deg) scale(1); }
     }
-    .app-logo { font-size: 50px; animation: pulse 2s infinite; text-align: center; }
-
-    /* Estilo DeepSeek Chat Input */
-    .stChatInputContainer { padding: 20px; background: transparent !important; }
-    .stChatInput input {
-        background-color: #1e0f33 !important;
-        border: 1px solid #7d33ff !important;
-        border-radius: 15px !important;
-        color: white !important;
+    .book-logo { 
+        font-size: 60px; 
+        display: block; 
+        margin: auto; 
+        animation: pulse-book 2s infinite; 
     }
 
-    /* Esconder elementos nativos */
-    header, footer, .stDeployButton {display: none !important;}
-
-    /* Botões de Ação na Mensagem (Sutis) */
-    .message-tools {
-        display: flex; gap: 10px; font-size: 0.8rem; margin-top: 5px; opacity: 0.6;
+    /* Chat Input igual ao DeepSeek */
+    .stChatInputContainer {
+        border-top: 1px solid #7d33ff !important;
+        background: #0e0616 !important;
     }
-    .message-tools:hover { opacity: 1; }
     
-    /* Indicador de Escrita (Dots) */
-    .typing { display: flex; gap: 5px; padding: 10px; }
-    .dot { width: 8px; height: 8px; background: #7d33ff; border-radius: 50%; animation: blink 1.4s infinite; }
-    .dot:nth-child(2) { animation-delay: 0.2s; }
-    .dot:nth-child(3) { animation-delay: 0.4s; }
-    @keyframes blink { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+    /* Esconder botões padrão que estragam o visual */
+    header, footer, .stDeployButton { visibility: hidden !important; height: 0 !important; }
+
+    /* Estilo dos balões de chat */
+    .stChatMessage { border-radius: 15px !important; padding: 15px !important; margin: 10px 0 !important; }
+    .stChatMessage[data-testid="stChatMessageUser"] { background: #2d1b4d !important; border: 1px solid #5a2bb0 !important; }
+    .stChatMessage[data-testid="stChatMessageAssistant"] { background: #1e0f33 !important; border: 1px solid #7d33ff !important; }
+
+    /* Três pontinhos animados */
+    .typing-dot {
+        width: 6px; height: 6px; background: #7d33ff; border-radius: 50%;
+        display: inline-block; animation: wave 1.3s linear infinite;
+    }
+    @keyframes wave { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-5px); } }
     </style>
     """, unsafe_allow_html=True)
 
-# 2. ESTADO DO SISTEMA (MEMÓRIA E CONFIGURAÇÕES)
+# --- INÍCIO DA LÓGICA ---
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "page" not in st.session_state:
     st.session_state.page = "home"
-if "theme" not in st.session_state:
-    st.session_state.theme = "Escuro"
-if "chat_config" not in st.session_state:
-    st.session_state.chat_config = {"font_size": 16, "font_family": "Inter", "language": "Português"}
 
-# Funções de utilidade
-def export_pdf(text):
-    buffer = BytesIO()
-    p = canvas.Canvas(buffer)
-    p.drawString(100, 800, "ChatFic AI - Sua Fanfic")
-    p.showPage()
-    p.save()
-    return buffer.getvalue()
-
-# 3. BARRA LATERAL (CONFIGURAÇÕES, LOGIN, CUSTOMIZAÇÃO)
+# BARRA LATERAL (SIDEBAR) - O "NEGÓCIO DO LADO"
 with st.sidebar:
-    st.markdown('<div class="app-logo">📖</div>', unsafe_allow_html=True)
-    st.title("ChatFic AI")
+    st.markdown('<div class="book-logo">📖</div>', unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align:center;'>ChatFic AI</h2>", unsafe_allow_html=True)
     
-    with st.expander("👤 Conta"):
-        st.text_input("Usuário")
+    st.divider()
+    
+    # LOGIN E CADASTRO
+    with st.expander("👤 Conta & Acesso"):
+        st.text_input("E-mail")
         st.text_input("Senha", type="password")
-        st.button("Login / Cadastrar")
-
-    with st.expander("⚙️ Personalização"):
-        st.session_state.theme = st.selectbox("Tema", ["Escuro", "Claro"])
-        st.session_state.chat_config["language"] = st.selectbox("Idioma", ["Português", "English", "Español"])
-        st.session_state.chat_config["font_size"] = st.slider("Tamanho da Fonte", 12, 24, 16)
-        st.session_state.chat_config["font_family"] = st.selectbox("Fonte", ["Inter", "Monospace", "Serif"])
-
+        st.button("Entrar", use_container_width=True)
+    
+    # CONFIGURAÇÕES DO CHAT
+    with st.expander("⚙️ Preferências"):
+        st.selectbox("Tema", ["Escuro 🌙", "Claro ☀️"])
+        st.slider("Tamanho da Letra", 12, 24, 16)
+        st.selectbox("Fonte", ["Inter", "Arial", "Courier New"])
+    
+    st.divider()
     if st.button("➕ Nova Fanfic", use_container_width=True):
         st.session_state.messages = []
         st.session_state.page = "home"
         st.rerun()
 
-    if st.button("🗑️ Apagar Chat atual"):
-        st.session_state.messages = []
+# PÁGINA INICIAL (ESTILO DEEPSEEK)
+if st.session_state.page == "home":
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; color:#7d33ff;'>ChatFic AI</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center;'>Insira o universo e o título para começar a sua obra prima.</p>", unsafe_allow_html=True)
+    
+    c1, c2 = st.columns(2)
+    with c1:
+        fandom = st.text_input("Qual o Fandom / Universo?", placeholder="Ex: Percy Jackson")
+    with c2:
+        titulo = st.text_input("Título da História", placeholder="Ex: O Herói Perdido")
+    
+    modelo = st.selectbox("Escolha o Estilo de Escrita ✍️", 
+                         ["🏰 Narrativa Épica (Longa)", "💘 Romance Intenso", "👻 Terror Psicológico", "⚔️ Ação e Combate"])
+    
+    if st.button("Criar Fanfic Agora ✨", use_container_width=True):
+        st.session_state.fandom = fandom
+        st.session_state.titulo = titulo
+        st.session_state.modelo = modelo
+        st.session_state.page = "chat"
         st.rerun()
 
-# 4. PÁGINA INICIAL (ESTILO DEEPSEEK)
-if st.session_state.page == "home":
-    st.markdown('<div class="app-logo">📖</div>', unsafe_allow_html=True)
-    st.markdown("<h1 style='text-align: center;'>Como vamos começar sua história?</h1>", unsafe_allow_html=True)
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        titulo = st.text_input("Título da Fanfic", placeholder="Ex: O Retorno do Rei")
-    with col2:
-        fandom = st.text_input("Universo/Fandom", placeholder="Ex: Harry Potter, Marvel...")
-    
+# PÁGINA DE CHAT
+else:
+    # Topo do Chat (Título e Três Pontinhos)
+    t1, t2 = st.columns([0.9, 0.1])
+    with t1:
+        st.markdown(f"### 📖 {st.session_state.titulo}")
+    with t2:
+        with st.popover("⋮"):
+            st.button("📥 Baixar PDF")
+            st.button("📄 Baixar Markdown")
+            st.button("🗑️ Apagar Chat")
+
+    # Exibição das Mensagens
+    for m in st.session_state.messages:
+        with st.chat_message(m["role"]):
+            st.write(m["content"])
+
+    # Entrada de Texto
+    if prompt := st.chat_input("Escreva o próximo passo da história..."):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.write(prompt)
+
+        with st.chat_message("assistant"):
+            placeholder = st.empty()
+            placeholder.markdown("📖 *ChatFic está escrevendo...* <span class='typing-dot'></span><span class='typing-dot'></span>", unsafe_allow_html=True)
+            
+            # Chama a IA Groq
+            client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+            instrucoes = f"Você é o ChatFic AI. Escreva uma fanfic do universo {st.session_state.fandom} com o título {st.session_state.titulo}. Use o modelo {st.session_state.modelo}. Seja humano, use capítulos longos nomeados como 'Capítulo X: Título', evite repetições e seja fiel ao fandom."
+            
+            res = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "system", "content": instrucoes}] + st.session_state.messages
+            )
+            
+            final_text = res.choices[0].message.content
+            
+            # Animação rápida de digitação
+            full_txt = ""
+            for chunk in final_text.split():
+                full_txt += chunk + " "
+                placeholder.markdown(full_txt + "▌")
+                time.sleep(0.05)
+                
+            placeholder.markdown(full_txt)
+            st.session_state.messages.append({"role": "assistant", "content": final_text})
+            
     st.markdown("### Escolha um Modelo de Escrita")
     modelos = {
         "📖 Narrativa Épica": "Focada em grandes acontecimentos e mundos vastos.",
