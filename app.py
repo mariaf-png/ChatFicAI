@@ -2,75 +2,75 @@ import streamlit as st
 from groq import Groq
 import time
 
-# 1. FORÇAR MODO CLARO E MENU DE 3 BARRINHAS
+# 1. FORÇAR MODO CLARO E ÍCONE DE MENU (3 BARRINHAS)
 st.set_page_config(
     page_title="ChatFic AI", 
     page_icon="📖", 
     layout="wide", 
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="collapsed" # Faz as 3 barrinhas aparecerem no topo
 )
 
-# 2. CSS PARA DESIGN IDENTICO (MODO CLARO + ROXO VIBRANTE)
+# 2. CSS "BLINDADO" PARA VISIBILIDADE TOTAL
 st.markdown("""
     <style>
-    /* Fundo Branco e Texto Visível */
+    /* Fundo Branco Puro e Texto Preto para nada ficar invisível */
     .stApp {
         background-color: #ffffff !important;
-        color: #1a1a1a !important;
+        color: #000000 !important;
     }
     
-    /* Esconder cabeçalhos nativos feios */
+    /* Esconder elementos desnecessários do Streamlit */
     header, footer { visibility: hidden !important; }
 
-    /* Inputs (Caixas de texto) escuras com texto branco como na sua foto */
-    .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] {
-        background-color: #2d2d35 !important;
+    /* Estilizando as Caixas de Texto (Inputs) para serem bem visíveis */
+    .stTextInput input, .stTextArea textarea {
+        background-color: #f0f2f6 !important;
+        color: #000000 !important;
+        border: 2px solid #7d33ff !important;
+        border-radius: 10px !important;
+    }
+
+    /* Título Roxo Grande */
+    .main-title {
+        color: #7d33ff !important;
+        text-align: center;
+        font-size: 3rem;
+        font-weight: bold;
+        margin-top: -40px;
+    }
+
+    /* Botão Roxo com Texto Branco */
+    .stButton button {
+        background-color: #7d33ff !important;
         color: #ffffff !important;
         border-radius: 10px !important;
-        border: none !important;
-        padding: 15px !important;
-    }
-
-    /* Título Roxo */
-    .main-title {
-        color: #7d33ff;
-        font-weight: 800;
-        font-size: 3.5rem;
-        text-align: center;
-        margin-top: -50px;
-    }
-
-    /* Botão Principal */
-    .stButton button {
-        background-color: #1a1a1a !important;
-        color: #7d33ff !important;
-        border: 2px solid #7d33ff !important;
-        border-radius: 12px !important;
-        font-weight: bold !important;
-        height: 50px !important;
         width: 100% !important;
+        font-weight: bold !important;
+        border: none !important;
     }
 
-    /* Ajuste da Barra Lateral (3 Barrinhas) */
+    /* Garantir que o texto do menu lateral apareça */
     [data-testid="stSidebar"] {
-        background-color: #f8f9fa !important;
+        background-color: #ffffff !important;
         border-right: 1px solid #7d33ff;
+    }
+    [data-testid="stSidebar"] * {
+        color: #000000 !important;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# 3. LOGICA DE ESTADO
+# 3. LÓGICA DE NAVEGAÇÃO
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "page" not in st.session_state:
     st.session_state.page = "home"
 
-# 4. BARRA LATERAL (ACESSÍVEL PELAS 3 BARRINHAS NO TOPO ESQUERDO)
+# 4. BARRA LATERAL (CLIQUE NAS 3 BARRINHAS NO TOPO ESQUERDO)
 with st.sidebar:
-    st.title("📖 ChatFic AI")
-    st.divider()
+    st.markdown("## ⚙️ Configurações")
     st.button("👤 Login / Cadastro")
-    st.slider("Tamanho da Fonte", 14, 24, 18)
+    st.divider()
     if st.button("➕ Nova Fanfic"):
         st.session_state.messages = []
         st.session_state.page = "home"
@@ -78,56 +78,56 @@ with st.sidebar:
 
 # 5. PÁGINA INICIAL
 if st.session_state.page == "home":
-    st.markdown("<div style='text-align:center;'><br>📖</div>", unsafe_allow_html=True)
     st.markdown("<h1 class='main-title'>ChatFic AI</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align:center; color: #555;'>Crie histórias incríveis com IA</p>", unsafe_allow_html=True)
     
-    # Inputs Identicos à sua imagem
-    fandom = st.text_input("Universo/Fandom", placeholder="Ex: Harry Potter")
-    titulo = st.text_input("Título da História", placeholder="Ex: A Pedra Filosofal 2")
+    # Campos de preenchimento
+    fandom = st.text_input("Qual o Universo/Fandom?", placeholder="Ex: Marvel, Naruto...")
+    titulo = st.text_input("Título da História", placeholder="Ex: O Retorno do Herói")
     
-    prompt_user = st.text_area("Como você quer que seja sua história?", 
-                              placeholder="Descreva detalhes: 'Quero que comece em uma floresta...'")
+    # Caixa de diálogo para o prompt como você pediu
+    instrucao = st.text_area("Como você quer a sua história?", 
+                            placeholder="Ex: Quero que a história comece em uma noite chuvosa e tenha muito mistério...")
     
-    modelo = st.selectbox("Estilo de Escrita", ["📖 Narrativa Longa", "💖 Romance", "🔥 Ação"])
-
-    if st.button("Gerar Primeiro Capítulo ✨"):
-        if fandom and titulo and prompt_user:
+    if st.button("GERAR HISTÓRIA ✨"):
+        if fandom and titulo and instrucao:
             st.session_state.fandom = fandom
             st.session_state.titulo = titulo
-            st.session_state.prompt_inicial = prompt_user
+            st.session_state.instrucao = instrucao
             st.session_state.page = "chat"
             st.rerun()
         else:
-            st.error("Preencha todos os campos!")
+            st.error("Por favor, preencha todos os campos acima!")
 
 # 6. PÁGINA DE CHAT
 else:
     st.markdown(f"<h2 style='text-align:center; color:#7d33ff;'>{st.session_state.titulo}</h2>", unsafe_allow_html=True)
     
-    # Exibir Chat
+    # Exibir histórico de mensagens
     for m in st.session_state.messages:
         with st.chat_message(m["role"]):
-            st.markdown(m["content"])
+            st.write(m["content"])
 
-    # Lógica da IA Groq
+    # Gerar a primeira resposta automaticamente
     if not st.session_state.messages:
         with st.chat_message("assistant"):
             try:
                 client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-                prompt_sistema = f"Você é o ChatFic AI. Universo: {st.session_state.fandom}. Instrução: {st.session_state.prompt_inicial}. Escreva o Capítulo 1 de forma longa e imersiva."
+                prompt_full = f"Escreva o capítulo 1 de uma fanfic do universo {st.session_state.fandom}. Detalhes: {st.session_state.instrucao}. Título: {st.session_state.titulo}."
                 
-                chat_completion = client.chat.completions.create(
+                res = client.chat.completions.create(
                     model="llama-3.3-70b-versatile",
-                    messages=[{"role": "system", "content": prompt_sistema}]
+                    messages=[{"role": "system", "content": "Você é um escritor de fanfics profissional."},
+                              {"role": "user", "content": prompt_full}]
                 )
                 
-                resposta = chat_completion.choices[0].message.content
-                st.markdown(resposta)
-                st.session_state.messages.append({"role": "assistant", "content": resposta})
-            except Exception as e:
-                st.error("Configure sua GROQ_API_KEY nos Secrets do Streamlit!")
+                txt = res.choices[0].message.content
+                st.write(txt)
+                st.session_state.messages.append({"role": "assistant", "content": txt})
+            except:
+                st.error("Erro: Verifique sua chave API do Groq no painel do Streamlit!")
 
-    # Input contínuo
-    if prompt := st.chat_input("Continue a história..."):
+    # Entrada para continuar a história
+    if prompt := st.chat_input("O que acontece depois?"):
         st.session_state.messages.append({"role": "user", "content": prompt})
         st.rerun()
