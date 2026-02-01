@@ -2,198 +2,163 @@ import streamlit as st
 from groq import Groq
 import time
 
-# 1. SETUP DE LAYOUT (FORÇA O MENU LATERAL)
+# 1. SETUP: MODO CLARO E MENU DE 3 BARRINHAS
 st.set_page_config(
     page_title="ChatFic AI", 
     page_icon="📖", 
     layout="wide", 
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="collapsed" # Isso garante que as 3 barrinhas apareçam no topo
 )
 
-# 2. CSS PARA CLONAR O SEU APP (TUDO IGUAL)
+# 2. CSS PARA DESIGN IDÊNTICO (MODO CLARO + ROXO)
 st.markdown("""
     <style>
-    /* Fundo Roxo Escuro Original */
+    /* Fundo Claro e Texto Escuro */
     .stApp {
-        background: #0e0616 !important;
-        color: #ffffff !important;
-        font-family: 'Inter', sans-serif;
+        background-color: #f8f9fa !important;
+        color: #212529 !important;
     }
     
-    /* Customizando a Barra Lateral */
+    /* Barra Lateral (Configurações) */
     [data-testid="stSidebar"] {
-        background-color: #1a0b2e !important;
-        border-right: 2px solid #9d4edd !important;
+        background-color: #ffffff !important;
+        border-right: 2px solid #7d33ff !important;
     }
 
-    /* Esconder elementos nativos do Streamlit */
+    /* Esconder elementos desnecessários */
     header, footer, .stDeployButton { visibility: hidden !important; }
 
-    /* Logo Animado (Livro) */
+    /* Logo Animado */
     .app-logo {
-        font-size: 70px;
+        font-size: 60px;
         text-align: center;
-        animation: float 3s ease-in-out infinite;
-        margin-top: 20px;
+        animation: pulse 2s infinite;
+        margin-bottom: 10px;
     }
-    @keyframes float {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-15px); }
-    }
+    @keyframes pulse { 0% {transform: scale(1);} 50% {transform: scale(1.1);} 100% {transform: scale(1);} }
 
-    /* Balões de Chat Idênticos ao seu site */
+    /* Balões de Chat (Modo Claro) */
     .stChatMessage {
-        border-radius: 20px !important;
+        border-radius: 15px !important;
         padding: 15px !important;
         margin-bottom: 15px !important;
-        border: 1px solid #3c165a !important;
+        box-shadow: 0px 2px 5px rgba(0,0,0,0.05);
     }
     .stChatMessage[data-testid="stChatMessageUser"] {
-        background: #3c165a !important;
-        margin-left: 20% !important;
+        background: #f0e6ff !important; /* Roxo bem clarinho */
+        border: 1px solid #7d33ff !important;
     }
     .stChatMessage[data-testid="stChatMessageAssistant"] {
-        background: #1e0f33 !important;
-        border-color: #9d4edd !important;
-        margin-right: 20% !important;
+        background: #ffffff !important;
+        border: 1px solid #dee2e6 !important;
     }
 
-    /* Ícones de Copiar e Editar sutilmente abaixo das mensagens */
-    .msg-actions {
-        font-size: 0.8rem;
-        color: #9d4edd;
-        margin-top: 5px;
-        display: flex;
-        gap: 15px;
-        cursor: pointer;
-    }
-
-    /* Input de Chat Estilizado */
-    .stChatInputContainer {
-        padding: 10px 10% !important;
-        background: transparent !important;
-    }
-    .stChatInput input {
-        border: 2px solid #9d4edd !important;
-        background: #1a0b2e !important;
-        color: white !important;
-        border-radius: 12px !important;
-    }
-
-    /* Indicador de Digitação (Dots) */
-    .typing-indicator {
-        display: flex; gap: 4px; padding: 10px;
-    }
-    .dot { width: 6px; height: 6px; background: #9d4edd; border-radius: 50%; animation: blink 1.4s infinite; }
-    @keyframes blink { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+    /* Botão de Enviar Roxo */
+    .stChatInput button { background-color: #7d33ff !important; color: white !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# 3. LÓGICA DE NAVEGAÇÃO E MEMÓRIA
+# 3. CONTROLE DE PÁGINA E MEMÓRIA
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "page" not in st.session_state:
     st.session_state.page = "home"
 
-# BARRA LATERAL (ACESSÍVEL PELO MENU DE 3 BARRINHAS NO TOPO)
+# BARRA LATERAL (MENU DE 3 BARRINHAS)
 with st.sidebar:
     st.markdown('<div class="app-logo">📖</div>', unsafe_allow_html=True)
     st.markdown("<h2 style='text-align:center;'>ChatFic AI</h2>", unsafe_allow_html=True)
     st.divider()
     
-    with st.expander("👤 Conta"):
-        st.button("Login", use_container_width=True)
-        st.button("Cadastrar", use_container_width=True)
+    st.subheader("👤 Minha Conta")
+    st.button("Login / Cadastro", use_container_width=True)
     
-    with st.expander("⚙️ Preferências"):
-        st.selectbox("Fonte do Chat", ["Inter", "Serif", "Monospace"])
-        st.slider("Tamanho da Fonte", 14, 28, 18)
-        st.selectbox("Idioma", ["Português", "English"])
-
+    st.subheader("⚙️ Aparência")
+    st.selectbox("Fonte", ["Inter", "Serif", "Monospace"])
+    st.slider("Tamanho da Letra", 14, 28, 18)
+    
     st.divider()
-    if st.button("✨ Nova Fanfic / Limpar", use_container_width=True):
+    if st.button("➕ Nova Fanfic", use_container_width=True):
         st.session_state.messages = []
         st.session_state.page = "home"
         st.rerun()
 
-# 4. PÁGINA INICIAL (IDÊNTICA AO SEU SITE)
+# 4. PÁGINA INICIAL (COM CAIXA DE PROMPT)
 if st.session_state.page == "home":
     st.markdown('<div class="app-logo">📖</div>', unsafe_allow_html=True)
-    st.markdown("<h1 style='text-align: center; color: #9d4edd;'>ChatFic AI</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center;'>A inteligência artificial fiel ao seu fandom.</p>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; color: #7d33ff;'>ChatFic AI</h1>", unsafe_allow_html=True)
     
-    c1, c2 = st.columns(2)
-    with c1:
-        fandom = st.text_input("Qual o Universo/Fandom?", placeholder="Ex: Marvel")
-    with c2:
-        titulo = st.text_input("Título da História", placeholder="Ex: O Legado de Asgard")
+    col1, col2 = st.columns(2)
+    with col1:
+        fandom = st.text_input("Qual o Universo/Fandom?", placeholder="Ex: Harry Potter")
+    with col2:
+        titulo = st.text_input("Título da História", placeholder="Ex: A Pedra Filosofal 2")
     
-    modelo = st.selectbox("Escolha seu Estilo de Escrita ✍️", [
-        "📖 Narrativa Longa e Humana", "💕 Romance Slow Burn", "🔥 Ação e Aventura", "🎭 Foco em Diálogos"
-    ])
+    # CAIXA DE DIÁLOGO PARA O PROMPT INICIAL (COMO QUER A HISTÓRIA)
+    prompt_inicial = st.text_area("Como você quer que seja a sua história?", 
+                                placeholder="Descreva detalhes: 'Quero que comece em uma floresta, com muito suspense e que o protagonista seja misterioso...'")
+    
+    modelo = st.selectbox("Estilo de Escrita", ["📖 Narrativa Longa", "💖 Romance", "🔥 Ação", "🎭 Drama"])
 
-    if st.button("Começar a Escrever ✨", use_container_width=True):
-        if fandom and titulo:
+    if st.button("Gerar Primeira Cena ✨", use_container_width=True):
+        if fandom and titulo and prompt_inicial:
             st.session_state.fandom = fandom
             st.session_state.titulo = titulo
+            st.session_state.instrucao_user = prompt_inicial
             st.session_state.modelo = modelo
             st.session_state.page = "chat"
             st.rerun()
         else:
-            st.error("Preencha o Título e o Universo primeiro!")
+            st.error("Preencha todos os campos para começar!")
 
-# 5. PÁGINA DE CHAT (LÓGICA E SERVIDOR)
+# 5. PÁGINA DE CHAT (LÓGICA E IA)
 else:
-    # Topo com Opções (Três Pontinhos)
-    col_t1, col_t2 = st.columns([0.9, 0.1])
-    with col_t1:
-        st.markdown(f"### 🖋️ {st.session_state.titulo} | {st.session_state.fandom}")
-    with col_t2:
-        with st.popover("⋮"):
-            st.button("📥 PDF")
-            st.button("📝 Markdown")
-            st.button("🗑️ Apagar")
-
-    # Mostrar Histórico (Memória Ativa)
+    st.markdown(f"### 🖋️ {st.session_state.titulo} | {st.session_state.fandom}")
+    
+    # Exibe Histórico
     for m in st.session_state.messages:
         with st.chat_message(m["role"]):
             st.markdown(m["content"])
-            st.markdown('<div class="msg-actions">📋 Copiar | ✂️ Editar | 🔄 Refazer</div>', unsafe_allow_html=True)
+            st.caption("📋 Copiar | ✂️ Editar | 🔄 Refazer")
 
-    # Entrada de Texto
-    if prompt := st.chat_input("Diga o que acontece a seguir na fanfic..."):
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
-
+    # Primeiro Capítulo Automático (baseado no prompt da home)
+    if not st.session_state.messages:
         with st.chat_message("assistant"):
             placeholder = st.empty()
-            placeholder.markdown('<div class="typing-indicator"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>', unsafe_allow_html=True)
+            placeholder.markdown("📖 *Criando primeiro capítulo...*")
             
             client = Groq(api_key=st.secrets["GROQ_API_KEY"])
             
-            # Memória da IA focada no Fandom e na Coerência
-            instrucoes = f"""
+            system_prompt = f"""
             Você é o ChatFic AI. Universo: {st.session_state.fandom}. Estilo: {st.session_state.modelo}.
-            REGRAS: Escreva capítulos LONGOS e naturais. Use 'Capítulo X: Título'. 
-            Evite repetições. Tenha memória absoluta dos fatos anteriores.
-            Seja 100% fiel ao fandom {st.session_state.fandom}.
+            INSTRUÇÃO DO USUÁRIO: {st.session_state.instrucao_user}
+            Escreva o primeiro capítulo de forma longa, humana e emocionante. Inicie com 'Capítulo 1: [Título]'.
             """
             
-            completion = client.chat.completions.create(
+            res = client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
-                messages=[{"role": "system", "content": instrucoes}] + st.session_state.messages[-15:]
+                messages=[{"role": "system", "content": system_prompt}]
             )
             
-            full_response = completion.choices[0].message.content
+            output = res.choices[0].message.content
+            placeholder.markdown(output)
+            st.session_state.messages.append({"role": "assistant", "content": output})
+
+    # Próximos passos do chat
+    if user_input := st.chat_input("O que acontece agora?"):
+        st.session_state.messages.append({"role": "user", "content": user_input})
+        with st.chat_message("user"):
+            st.markdown(user_input)
             
-            # Efeito de Digitação
-            typed_text = ""
-            for char in full_response:
-                typed_text += char
-                placeholder.markdown(typed_text + "▌")
-                time.sleep(0.005)
+        with st.chat_message("assistant"):
+            placeholder = st.empty()
+            client = Groq(api_key=st.secrets["GROQ_API_KEY"])
             
-            placeholder.markdown(full_response)
-            st.session_state.messages.append({"role": "assistant", "content": full_response})
-        
+            response = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "system", "content": f"Continue a fanfic no universo {st.session_state.fandom}. Seja fiel aos detalhes."}] + st.session_state.messages[-10:]
+            )
+            
+            final_res = response.choices[0].message.content
+            placeholder.markdown(final_res)
+            st.session_state.messages.append({"role": "assistant", "content": final_res})
