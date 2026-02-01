@@ -1,102 +1,69 @@
 import streamlit as st
-from groq import Groq
 
-# 1. FORÇAR ESTADO EXPANDIDO PARA EVITAR TELA VAZIA
-st.set_page_config(
-    page_title="ChatFic AI",
-    layout="centered",
-    initial_sidebar_state="expanded" 
-)
+# 1. Configuração da Página
+st.set_page_config(page_title="ChatFic AI", layout="centered", initial_sidebar_state="expanded")
 
-# 2. CSS "LIMPO" PARA EVITAR TELA BRANCA E MANTER O DESIGN
+# 2. Inicialização Robusta do Estado (Session State)
+if "page" not in st.session_state:
+    st.session_state.page = "home"
+
+# Funções de Navegação (Callbacks) - Isso garante que o botão funcione sempre
+def ir_para_home():
+    st.session_state.page = "home"
+    st.session_state.messages = []
+
+def ir_para_chat():
+    st.session_state.page = "chat"
+
+# 3. CSS para manter o visual das fotos
 st.markdown("""
     <style>
-    /* Base da App - Fundo Branco */
-    .stApp {
-        background-color: #FFFFFF !important;
-    }
-
-    /* BARRA LATERAL (SIDEBAR) - IGUAL À FOTO 11967 */
-    [data-testid="stSidebar"] {
-        background-color: #FFFFFF !important;
-        border-right: 1px solid #F0F0F5 !important;
-    }
+    .stApp { background-color: #FFFFFF !important; }
     
-    /* Botão Roxo Oval na Sidebar */
+    /* Botões da Sidebar - Roxo e Oval como na Foto 11967 */
     [data-testid="stSidebar"] .stButton button {
         background-color: #5D5FEF !important;
         color: white !important;
         border-radius: 50px !important;
+        width: 100% !important;
         border: none !important;
-        padding: 10px 20px !important;
+        padding: 10px !important;
     }
 
-    /* INPUTS ARREDONDADOS - IGUAL À FOTO 11965 */
-    .stTextInput input, .stTextArea textarea {
+    /* Inputs Arredondados como na Foto 11965 */
+    .stTextInput input {
+        border-radius: 20px !important;
         background-color: #F8F9FB !important;
         border: 1px solid #E6E8EB !important;
-        border-radius: 20px !important;
-        color: #1A1C1E !important;
-    }
-
-    /* BOTÃO GERAR - ROXO E OVAL */
-    div.stButton > button:first-child {
-        background-color: #5D5FEF !important;
-        color: white !important;
-        border-radius: 50px !important;
-        border: none !important;
-        width: 100% !important;
-        font-weight: bold !important;
-    }
-
-    /* Títulos em Preto para visibilidade total */
-    h1, h2, h3, p, label {
-        color: #1A1C1E !important;
-        font-family: 'Inter', sans-serif !important;
-    }
-
-    /* Garante que o Header (Menu) não suma */
-    header {
-        visibility: visible !important;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# 3. INICIALIZAÇÃO DE VARIÁVEIS (ESSENCIAL PARA NÃO DAR TELA BRANCA)
-if "page" not in st.session_state:
-    st.session_state.page = "home"
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-# 4. MENU LATERAL
+# 4. Barra Lateral (Sidebar)
 with st.sidebar:
     st.markdown("### 📖 ChatFic")
-    if st.button("＋ Nova Fanfic"):
-        st.session_state.page = "home"
-        st.session_state.messages = []
-        st.rerun()
-    st.markdown("---")
-    st.markdown("🌍 Comunidade")
-    st.markdown("⚙️ Configurações")
-
-# 5. CONTEÚDO PRINCIPAL
-if st.session_state.page == "home":
-    st.markdown("<p style='text-align:center; font-size: 60px;'>📖</p>", unsafe_allow_html=True)
-    st.markdown("<h1 style='text-align:center;'>Nova Fanfic</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align:center; color: #6E7175;'>Sua próxima obra-prima começa agora.</p>", unsafe_allow_html=True)
+    # Usamos o parâmetro on_click para garantir que a função seja chamada
+    st.button("＋ Nova Fanfic", on_click=ir_para_home)
     
-    # Campos
-    st.text_input("TÍTULO DA SUA OBRA...", placeholder="Dê um nome épico...")
-    st.text_input("UNIVERSO (EX: MARVEL, ONE PIECE)", placeholder="Hogwarts, Gotham...")
+    st.markdown("---")
+    st.button("🌍 Comunidade")
+    st.button("⚙️ Configurações")
+
+# 5. Lógica de Exibição de Telas
+if st.session_state.page == "home":
+    st.markdown("<h1 style='text-align:center;'>Nova Fanfic</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align:center; color:gray;'>Sua próxima obra-prima começa agora.</p>", unsafe_allow_html=True)
+    
+    titulo = st.text_input("TÍTULO DA SUA OBRA...", placeholder="Dê um nome épico...")
+    universo = st.text_input("UNIVERSO (EX: MARVEL, ONE PIECE)", placeholder="Hogwarts, Gotham...")
     
     st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("GERAR HISTÓRIA ✨"):
-        st.session_state.page = "chat"
-        st.rerun()
+    # Botão principal também com on_click
+    st.button("GERAR HISTÓRIA ✨", on_click=ir_para_chat)
 
-else:
-    # Tela de Chat (simulada para evitar erro se não houver Groq configurado)
-    st.markdown("<h2 style='text-align:center;'>Escrevendo...</h2>", unsafe_allow_html=True)
-    if st.button("← Voltar"):
-        st.session_state.page = "home"
-        st.rerun()
+elif st.session_state.page == "chat":
+    st.markdown("<h2 style='text-align:center;'>🖋️ Criando sua História</h2>")
+    st.info("O chat está pronto para começar!")
+    if st.button("← Voltar para o Início", on_click=ir_para_home):
+        pass
+        
